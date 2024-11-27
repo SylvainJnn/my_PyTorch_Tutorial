@@ -304,8 +304,8 @@ class Agent():
                 # policy
                 # REFAIRE AVEC LES MATHS ET UNE FEUILLES
                 distribution = self.policy_network.forward(states) # forward prpagation to get the array contaning the possible action 
-                new_probs = distribution.log_prob(actions) #policy pi(a|t)! # TODO pourquoi ? 
-                prob_ratio = new_probs.exp() / memory_probs.exp() # pk exp() ?  -> ek famoso (pi)/(pi_old) -> if yes rename memory en old ? 
+                new_probs = distribution.log_prob(actions) #policy pi(a|t)!
+                prob_ratio = new_probs.exp() / memory_probs.exp() # pass to exponential becuase previoulsy was log prob -> el famoso (pi)/(pi_old) -> if yes rename memory en old ? 
 
                 # policy
                 prob_clip = torch.clamp(prob_ratio, 1-self.epsilon, 1+self.epsilon) * At_arr[batch_indices]
