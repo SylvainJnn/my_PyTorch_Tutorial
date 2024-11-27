@@ -1,5 +1,3 @@
-# https://github.com/hermesdt/reinforcement-learning/blob/master/ppo/cartpole_ppo_online.ipynb
-import os
 import gymnasium as gym
 import torch
 # from torch.utils import tensorboard
@@ -134,7 +132,7 @@ class value_network(torch.nn.Module):
 class Agent():
     def __init__(self,
                  gamma: float,
-                 lambda_value: float, # already exist in python # what is it in ppo ? 
+                 lambda_value: float, # already exist in python 
                  epsilon: float, # = 0.2 e
                  learning_rate: int,
                  epochs: int,
@@ -213,7 +211,7 @@ class Agent():
         -> faudrait faire une version (branch) Où plutpot que d'avoir At pour le batch entier, il faut le faire que pour un seul petit batch et ça prendrait le ratio en plutôt qu reward
         """
         discount = 1
-        running_At= 0
+        running_At = 0
         for k in range(t, T_changer_nom-1): # equation 11 from paper
             if(dones_arr[k]): # check if at this moment episode is over (=done) or not. If yes -> directly subtract the vlaue to the reward (ignore future episodes in this case)
                 running_At += reward_arr[k] - value_arr[k]
@@ -221,7 +219,15 @@ class Agent():
                 running_At += reward_arr[k] + (self.gamma*value_arr[k+1]) - value_arr[k] # δk​=rk​ + γ⋅V(sk+1​) − V(sk​) (?) -> rk reward or ration ?
         
             running_At = discount * running_At
-            # discount *= self.gamma * self.lamda # was not in the code when it works # je pense que le mec était sous jack car c'est pas reward mais ration si je comprend le papier
+            # discount *= self.gamma * self.lambda_value # was not in the code when it works # je pense que le mec était sous jack car c'est pas reward mais ration si je comprend le papier
+        return(running_At)
+
+    def calculate_running_At_v2(self, t, T_changer_nom, dones_arr, reward_arr, value_arr): # check https://kr.mathworks.com/help/reinforcement-learning/ug/proximal-policy-optimization-agents.html#mw_06e7348f-8170-408c-a080-ce2d579252d1  et https://ai.stackexchange.com/questions/34347/ppo-advantage-estimate-why-does-advantage-estimate-have-r-t-gamma-vs-t1
+        running_At = 0
+        for k in range(t, T_changer_nom-1):
+            delta = reward_arr[k] + self.gamma*value_arr[k+1] - value_arr[k]
+            running_At += (self.lambda_value * self.gamma)**(k-t) * delta # not sure // we can create a discount factor variable discountf and do: dicount = 1; dicout += lambda * gamma
+
         return(running_At)
 
     # maybe we can try other At computation method 
@@ -257,9 +263,8 @@ class Agent():
 
     def learn(self): # Backward
         """
-        
-        
-        
+        learn from previous examples. the agent takes samples from its memory (previous actions) and learn from it.
+        It divides this memory to batches to process it.         
         """
         for _ in range(self.epochs):
             # get memory -> take sample of previous experiences sotred from PPO_memory
@@ -274,7 +279,7 @@ class Agent():
             batches_indices = self.memory.generate_batches()
 
             At_arr = self.calculate_At(reward_arr, value_arr, dones_arr) # Array that contains advantage At for the whole batch 
-            values = torch.tensor(value_arr).to(self.value_network.device) # array that contains  values
+            values_old = torch.tensor(value_arr).to(self.value_network.device) # array that contains  values
 
             for batch_indices in batches_indices:
                 # get one batch from the whole
@@ -297,19 +302,16 @@ class Agent():
                 loss_clip_policy = -torch.min(prob_ratio * At_arr[batch_indices], prob_clip).mean() # if not .mean() -> unstable / in torch the goal is to reduce so it needs a - sign
 
 
-
                 # Value
                 # s or not ? 
                 value = self.value_network.forward(states) # critic # si crach enelever le .forward
                 value = torch.squeeze(value) # get the value from value network after forward
 
-                # TODO zone d'ombre ici
-                # Rt = At + V(st) // pourquoi ? , c'est quoi Rt ->>
-                Rt = At_arr[batch_indices] + values[batch_indices] # from code # poruqoi y'a deux fois values (pas le même input, y'en a un c'est state[k] et l'autre c'est quoi ?)
-                # Rt = prob_ratio + self.gamma * self.values € states + 1 ? ????
-                loss_value = ((value - Rt)**(2)).mean() # (V - Rt)**2
+                # Rt = At + V_old(?)(st) // Value target or return target, At advantages and V(st) the values from value network from memory
+                value_target = At_arr[batch_indices] + values_old[batch_indices] 
+                loss_value = ((value - value_target)**(2)).mean() # (V - Rt)**2
                 
-                c1 = 0.5 # why multiply ?
+                c1 = 0.5 
                 # POURQUOI + et pas - comme dans dans forumle ? (car pytorch cherche le plus petit donc il faut faire *(-1) ?)
                 Loss_total = loss_clip_policy + c1*loss_value # Lclip_policy + value = E[... - c1 L ... + c2 S] 
 
@@ -323,9 +325,6 @@ class Agent():
 
         self.memory.clear_memory()
 
-
-
-
     def store_data(self, state, action, action_prob, val, reward, done):
         self.memory.store_memory(state, action, action_prob, val, reward, done)
        
@@ -338,7 +337,6 @@ class Agent():
         print('... Loading models ...')
         self.value_network.load_model()
         self.policy_network.load_model()
-
 
 
 def training(environment, agent, episodes, N, figure_file):
@@ -397,7 +395,7 @@ def training(environment, agent, episodes, N, figure_file):
         print('episode', i, 
               'score %.1f' % score, 
               'avg score %.1f' % average_score,
-              'time_steps', n, 
+              'time_steps', n_steps, 
               'learning_steps', nb_learned)
         
     print("training is over")
@@ -419,7 +417,6 @@ def plot_learning_curve(x, scores, figure_file):
 TODO:
 - réécire sur une feuilles l'algo
 - double checks varaibles names
-- rajouter du commentaire
 - - une fois commenté, nommer les fonction en précisant les méthodes des calcul des var: 
 - - - Rt = Monte carlo OU Approche apr estimation
 - apparament ça marche pas avec env continue (on verra plus tard)
@@ -430,10 +427,6 @@ Next version:
     - un jeux en utilisant l'image du jeux (cf CNN -> comme pokémon RL)
 - rajouter un temps limite si y'en a pas déjà un
 
-mettre sur guthub !!!
-
-
-autre partie du code dans gymtest/jsp.py
 
 """
 
