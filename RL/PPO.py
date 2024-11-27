@@ -1,6 +1,5 @@
 import gymnasium as gym
 import torch
-# from torch.utils import tensorboard
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -205,10 +204,21 @@ class Agent():
 
     def calculate_running_At_v1(self, t, T_changer_nom, dones_arr, reward_arr, value_arr):
         """
-        first versoin to calculte running At from tutorial
-        RE FAIRE AVEC LE PAPIER TODO
-        ce ne serait pass rewar ddu tout mais RATIO
-        -> faudrait faire une version (branch) Où plutpot que d'avoir At pour le batch entier, il faut le faire que pour un seul petit batch et ça prendrait le ratio en plutôt qu reward
+        Compute At[t], the advantages for t 
+        
+        Input:
+        - t: indices between [0, T-1]
+        - T_changer_nom (int): limit of the number of data to look before (same number as batch size) 
+        - dones_arr: array containing dones from memory
+        - reward_arr: array containing reward from memory 
+        - value_arr: array containing value from memory 
+        
+        Output:
+        - running_At: At[t] = running_At
+
+        # RE FAIRE AVEC LE PAPIER TODO
+        # ce ne serait pass rewar ddu tout mais RATIO
+        # -> faudrait faire une version (branch) Où plutpot que d'avoir At pour le batch entier, il faut le faire que pour un seul petit batch et ça prendrait le ratio en plutôt qu reward
         """
         discount = 1
         running_At = 0
