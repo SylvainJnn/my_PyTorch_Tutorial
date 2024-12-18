@@ -15,7 +15,9 @@ class PPO_memory():
 
         self.batch_size = batch_size
 
-    # take among (among or all?) previous experiences and create random batches from it, returns thoses batches. 
+    ## take among (among or all?) previous experiences and create random batches from it, returns thoses batches. 
+    # @param self: The object pointer.
+    # @return 
     def generate_batches(self): # get memory ? 
         states_size = len(self.states) 
         
@@ -81,7 +83,11 @@ class policy_network(torch.nn.Module):
         self.device = device
         self.to(self.device)
 
-    def forward(self, input): # input is state vector in the case of PPO deep RL
+    ## foward propagation of the network
+    # @param self: The object pointer.
+    # @param input: state vector in the case of PPO deep RL
+    # @return distribution: probability array for each action
+    def forward(self, input): 
         output = self.model(input)
         distribution = torch.distributions.categorical.Categorical(output) # Creates a probability distribution for each action from the network's outputs. --> instead of having a simple number, it transforms it to probabily using specific rules 
         return(distribution)
@@ -117,6 +123,10 @@ class value_network(torch.nn.Module):
         self.device = device
         self.to(self.device)
     
+    ## foward propagation of the network
+    # @param self: The object pointer.
+    # @param input: state vector in the case of PPO deep RL
+    # @return output: value for the given state
     def forward(self, input):
         output = self.model(input)
         return(output)
@@ -170,18 +180,14 @@ class Agent():
         self.memory = PPO_memory(self.batch_size)
         
 
+    ## Do a forward propagation to chose the action.
+    # @param self: The object pointer.
+    # @param state: State of the environement.
+    # @return action: Output of the policy network -> action choosed randomly based on the probabilities
+    # @return probabilities: Output of the policy network -> array that contains the probability of all the possible action
+    # @return value: Output of the value network -> (guessed action ??? TODO) 
     def choose_action(self, state): # do a forward to chose the action
-        """
-        Do a forward propagation to chose the action
 
-        Input:
-        - state: state of the environement 
-
-        Output:
-        - action: output of the policy network -> action choosed randomly based on the probabilities
-        - probabilities: output of the policy network -> array that contains the probability of all the possible action
-        - value: output of the value network -> (guessed action ??? TODO) 
-        """
         state = torch.tensor([state], dtype=torch.float).to(self.policy_network.device) # set data acording to device
         
         # POLICY Network
@@ -232,6 +238,14 @@ class Agent():
             # discount *= self.gamma * self.lambda_value # was not in the code when it works # je pense que le mec était sous jack car c'est pas reward mais ration si je comprend le papier
         return(running_At)
 
+    ## Compute At[t], the advantages for t
+    # @param self: The object pointer.
+    # @param t: indices between [0, T-1]
+    # @param T_changer_nom (int): limit of the number of data to look before (same number as batch size) 
+    # @param dones_arr: array containing dones from memory
+    # @param reward_arr: array containing reward from memory 
+    # @param value_arr: array containing value from memory 
+    # @return running_At: At[t] = running_At
     def calculate_running_At_v2(self, t, T_changer_nom, dones_arr, reward_arr, value_arr): # check https://kr.mathworks.com/help/reinforcement-learning/ug/proximal-policy-optimization-agents.html#mw_06e7348f-8170-408c-a080-ce2d579252d1  et https://ai.stackexchange.com/questions/34347/ppo-advantage-estimate-why-does-advantage-estimate-have-r-t-gamma-vs-t1
         running_At = 0
         for k in range(t, T_changer_nom-1):
@@ -270,12 +284,11 @@ class Agent():
         At = torch.tensor(At).to(self.policy_network.device) # converse to pytorch tensor
         
         return(At)
-
+    
+    ## learn from previous examples. the agent takes samples from its memory (previous actions) and learn from it.
+    ## It divides this memory to batches to process it.   
+    # @param self: The object pointer.
     def learn(self): # Backward
-        """
-        learn from previous examples. the agent takes samples from its memory (previous actions) and learn from it.
-        It divides this memory to batches to process it.         
-        """
         for _ in range(self.epochs):
             # get memory -> take sample of previous experiences sotred from PPO_memory
             # all arrays 
@@ -348,18 +361,13 @@ class Agent():
         self.value_network.load_model()
         self.policy_network.load_model()
 
-
+## Train the agent
+# @param environment: environment of the game (gymanisum)
+# @param agent: the tranined agent
+# @param episodes (int): total number of games the environment is going to play to train the agent
+# @param N (int) : variable that determines the number of time steps (n or t_steps) between two agent updates
+# @param figure_file (str): 
 def training(environment, agent, episodes, N, figure_file):
-    """
-    Train the agent
-
-    Input:
-    - environment: environment of the game (gymanisum)
-    - agent: the tranined agent
-    - episodes (int): total number of games the environment is going to play to train the agent
-    - N (int) : variable that determines the number of time steps (n or t_steps) between two agent updates
-    - figure_file (str): 
-    """
     n_steps = 0 # n_step (discrete) or t_steps (continue) -> represent the total time (or nb of iteration) done in this envronment
     nb_learned = 0 # how many time did the agent learned
 
@@ -411,6 +419,7 @@ def training(environment, agent, episodes, N, figure_file):
     print("training is over")
     x = [i+1 for i in range(len(score_history))]
     plot_learning_curve(x, score_history, figure_file)
+
 
 def plot_learning_curve(x, scores, figure_file):
     running_avg = np.zeros(len(scores))
