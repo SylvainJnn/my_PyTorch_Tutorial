@@ -4,6 +4,9 @@ import torch
 from PPO import *
 
 
+## Get the number of action the agent can do in the given environment
+# @param environment: agent's environment
+# @return action_dimension: number of possible agent's actions
 def get_action_dimension(environment):
      # Identifier le type d'espace d'action
     if isinstance(environment.action_space, gym.spaces.Discrete):
@@ -16,6 +19,10 @@ def get_action_dimension(environment):
         raise TypeError("Espace d'action inconnu.")
     return(action_dimension)
 
+
+## Test the agent  
+# @param trained_agent: the trained agent that is going to be tested
+# @param test_episodes: maximum number of episodes to test the agent
 def test(trained_agent, test_episodes): # put in ppo ? 
     
     trained_agent.load_models()
